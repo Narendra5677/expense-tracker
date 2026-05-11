@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Expenses</title>
+<style>
+  :root {
+    --bg: #000;
+    --surface: #1c1c1e;
+    --surface2: #2c2c2e;
+    --surface3: #3a3a3c;
+    --border: rgba(255,255,255,0.08);
+    --accent: #ff9f0a;
+    --accent2: #ffd60a;
+    --text: #ffffff;
+    --subtext: #ebebf5cc;
+    --muted: #ebebf54d;
+    --danger: #ff453a;
+    --edit: #0a84ff;
+    --green: #30d158;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { height:100%; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, 'SF Pro Text', BlinkMacSystemFont, sans-serif;
+    min-height: 100vh;
+    padding-bottom: 200px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── NAV TAB BAR ── */
+  .tab-bar {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: rgba(28,28,30,0.92);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 0.5px solid var(--border);
+    display: flex;
+    padding-bottom: env(safe-area-inset-bottom);
+    z-index: 100;
+  }
+  .tab-btn {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 8px 0 6px; cursor: pointer;
+    color: var(--muted); gap: 3px;
+    font-size: 10px; font-weight: 500; letter-spacing: 0.1px;
+    transition: color 0.15s;
+    border: none; background: none;
+  }
+  .tab-btn.active { color: var(--accent); }
+
+  /* ── LARGE TITLE HEADER ── */
+  .header {
+    padding: 56px 20px 8px;
+    background: var(--bg);
+  }
+  .large-title {
+    font-size: 34px; font-weight: 700; letter-spacing: 0.37px;
+    color: var(--text);
+  }
+
+  /* ── MONTH NAVIGATOR ── */
+  .month-nav-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 4px 20px 12px;
+    background: var(--bg);
+  }
+  .month-nav-btn {
+    background: none; border: none;
+    color: var(--accent); font-size: 22px;
+    cursor: pointer; padding: 4px 8px; line-height: 1;
+  }
+  .month-title {
+    font-size: 17px; font-weight: 600; color: var(--text);
+  }
+
+  /* ── SUMMARY CARDS ── */
+  .summary-row {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px; padding: 0 20px 20px;
+    background: var(--bg);
+  }
+  .s-card {
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 14px 12px;
+    text-align: center;
+  }
+  .s-label {
+    font-size: 11px; font-weight: 500;
+    color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin-bottom: 6px;
+  }
+  .s-val {
+    font-size: 20px; font-weight: 700;
+    color: var(--accent);
+  }
+
+  /* ── PAGES ── */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── GROUPED LIST (iPhone style) ── */
+  .section { margin: 0 20px 28px; }
+  .section-header {
+    font-size: 13px; font-weight: 400;
+    color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin-bottom: 8px; padding-left: 4px;
+  }
+  .grouped-list {
+    background: var(--surface);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .list-row {
+    display: flex; align-items: center;
+    padding: 12px 16px;
+    border-bottom: 0.5px solid var(--border);
+    position: relative;
+  }
+  .list-row:last-child { border-bottom: none; }
+  .list-row-label { font-size: 17px; color: var(--text); flex: 1; }
+  .list-row-value { font-size: 17px; color: var(--muted); }
+  .list-row-chevron { color: var(--muted); font-size: 14px; margin-left: 6px; }
+
+  /* ── FORM INPUTS ── */
+  .form-input {
+    background: var(--surface2);
+    border: none; border-radius: 10px;
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 17px;
+    padding: 13px 16px; width: 100%;
+    outline: none; -webkit-appearance: none;
+    margin-bottom: 12px;
+  }
+  .form-input::placeholder { color: var(--muted); }
+  .form-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23636366' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 16px center;
+    background-color: var(--surface2);
+    padding-right: 40px;
+  }
+
+  /* ── ADD PAGE ── */
+  .add-page { padding: 20px 20px 0; }
+  .add-section-title {
+    font-size: 13px; font-weight: 400; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin-bottom: 8px; padding-left: 4px;
+  }
+  .add-group { background: var(--surface); border-radius: 16px; overflow: hidden; margin-bottom: 12px; }
+  .add-group-row {
+    display: flex; align-items: center;
+    padding: 0 16px;
+    border-bottom: 0.5px solid var(--border);
+    min-height: 50px;
+  }
+  .add-group-row:last-child { border-bottom: none; }
+  .add-group-label {
+    font-size: 17px; color: var(--text);
+    width: 100px; flex-shrink: 0;
+  }
+  .add-group-input {
+    flex: 1; background: none; border: none;
+    color: var(--text); font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 17px; outline: none; -webkit-appearance: none;
+    padding: 13px 0; text-align: right;
+  }
+  .add-group-input::placeholder { color: var(--muted); }
+  .add-group-select {
+    flex: 1; background: none; border: none;
+    color: var(--accent); font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 17px; outline: none; -webkit-appearance: none;
+    padding: 13px 0; text-align: right;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23ff9f0a' d='M5 6L0 0h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0 center;
+    padding-right: 18px;
+  }
+  .add-main-btn {
+    background: var(--accent);
+    border: none; border-radius: 14px;
+    color: #000; font-size: 17px; font-weight: 700;
+    padding: 15px; width: 100%;
+    cursor: pointer; letter-spacing: 0.3px;
+    transition: opacity 0.15s;
+  }
+  .add-main-btn:active { opacity: 0.8; }
+
+  /* ── FILTER CHIPS ── */
+  .filter-scroll {
+    display: flex; gap: 8px; overflow-x: auto;
+    padding: 0 20px 16px; scrollbar-width: none;
+  }
+  .filter-scroll::-webkit-scrollbar { display: none; }
+  .filter-chip {
+    background: var(--surface); border-radius: 20px;
+    color: var(--subtext); font-size: 15px; font-weight: 500;
+    padding: 6px 16px; white-space: nowrap; cursor: pointer;
+    border: 0.5px solid var(--border); flex-shrink: 0;
+    transition: all 0.15s;
+  }
+  .filter-chip.active {
+    background: var(--accent); color: #000; border-color: var(--accent);
+  }
+
+  /* ── ENTRY ROWS ── */
+  .entry-item {
+    background: var(--surface);
+    border-radius: 0;
+    display: flex; align-items: center;
+    padding: 13px 16px;
+    border-bottom: 0.5px solid var(--border);
+    gap: 12px;
+    cursor: pointer;
+    transition: background 0.1s;
+    -webkit-user-select: none;
+  }
+  .entry-item:active { background: var(--surface2); }
+  .entry-item:first-child { border-radius: 16px 16px 0 0; }
+  .entry-item:last-child { border-bottom: none; border-radius: 0 0 16px 16px; }
+  .entry-item:only-child { border-radius: 16px; }
+  .entry-cat-dot {
+    width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  }
+  .entry-info { flex: 1; min-width: 0; }
+  .entry-cat-name { font-size: 17px; font-weight: 500; color: var(--text); }
+  .entry-datetime { font-size: 13px; color: var(--muted); margin-top: 2px; }
+  .entry-amount { font-size: 17px; font-weight: 600; color: var(--accent); }
+  .entry-chevron { color: var(--muted); font-size: 13px; margin-left: 4px; }
+
+  /* ── CHART ── */
+  .chart-page { padding: 0 20px 60px; }
+  canvas#pie { max-width: 280px; width: 100%; display: block; margin: 0 auto 20px; }
+  .legend-list { background: var(--surface); border-radius: 16px; overflow: hidden; }
+  .legend-row {
+    display: flex; align-items: center;
+    padding: 13px 16px;
+    border-bottom: 0.5px solid var(--border);
+    gap: 12px;
+  }
+  .legend-row:last-child { border-bottom: none; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .legend-cat { font-size: 17px; color: var(--text); flex: 1; }
+  .legend-right { text-align: right; }
+  .legend-amt { font-size: 17px; font-weight: 600; color: var(--accent); }
+  .legend-pct { font-size: 13px; color: var(--muted); margin-top: 1px; }
+  .no-data { text-align: center; padding: 50px 20px; color: var(--muted); font-size: 17px; }
+
+  /* ── HISTORY ── */
+  .history-page { padding: 0 20px; }
+  .history-group { margin-bottom: 28px; }
+  .history-month-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0 4px 8px;
+  }
+  .history-month-name { font-size: 13px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .history-month-total { font-size: 13px; color: var(--muted); font-weight: 500; }
+  .history-list { background: var(--surface); border-radius: 16px; overflow: hidden; }
+  .history-cat-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 13px 16px;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .history-cat-row:last-child { border-bottom: none; }
+  .history-cat-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .history-cat-name { font-size: 17px; color: var(--text); flex: 1; }
+  .history-cat-amt { font-size: 17px; font-weight: 600; color: var(--accent); }
+
+  /* ── ACTION SHEET ── */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 200; opacity: 0; pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .overlay.show { opacity: 1; pointer-events: all; }
+  .action-sheet {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    z-index: 201; padding: 0 8px calc(env(safe-area-inset-bottom) + 8px);
+    transform: translateY(110%);
+    transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
+  }
+  .overlay.show .action-sheet { transform: translateY(0); }
+  .sheet-group {
+    background: rgba(44,44,46,0.95);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border-radius: 16px; overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .sheet-title-row {
+    padding: 14px 16px 10px;
+    text-align: center;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .sheet-title-text { font-size: 13px; color: var(--muted); font-weight: 400; }
+  .sheet-btn {
+    display: block; width: 100%; padding: 15px 16px;
+    background: none; border: none; cursor: pointer;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 20px; text-align: center;
+    border-top: 0.5px solid var(--border);
+    transition: background 0.1s;
+  }
+  .sheet-btn:first-of-type { border-top: none; }
+  .sheet-btn:active { background: var(--surface3); }
+  .sheet-btn.edit-btn { color: var(--edit); font-weight: 400; }
+  .sheet-btn.delete-btn { color: var(--danger); font-weight: 400; }
+  .confirm-row { display:none; padding: 12px 16px; background: var(--surface3); border-top: 0.5px solid var(--border); }
+  .confirm-row.show { display:flex; gap:8px; }
+  .confirm-yes { flex:1; background:var(--danger); border:none; border-radius:10px; color:#fff; font-size:16px; font-weight:700; padding:12px; cursor:pointer; }
+  .confirm-no { flex:1; background:var(--surface2); border:none; border-radius:10px; color:var(--text); font-size:16px; font-weight:600; padding:12px; cursor:pointer; }
+  .sheet-cancel-btn {
+    display: block; width: 100%; padding: 15px 16px;
+    background: rgba(44,44,46,0.95);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border: none; border-radius: 16px;
+    cursor: pointer;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 20px; font-weight: 600; color: var(--accent);
+    text-align: center;
+  }
+  .sheet-cancel-btn:active { opacity: 0.7; }
+
+  /* ── EDIT MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 300; opacity: 0; pointer-events: none;
+    transition: opacity 0.25s;
+    display: flex; align-items: flex-end;
+  }
+  .modal-overlay.show { opacity: 1; pointer-events: all; }
+  .modal-sheet {
+    background: var(--surface);
+    border-radius: 20px 20px 0 0;
+    padding: 24px 20px calc(env(safe-area-inset-bottom) + 24px);
+    width: 100%;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
+  }
+  .modal-overlay.show .modal-sheet { transform: translateY(0); }
+  .modal-handle {
+    width: 36px; height: 4px; background: var(--surface3);
+    border-radius: 2px; margin: 0 auto 20px;
+  }
+  .modal-title { font-size: 20px; font-weight: 700; color: var(--text); margin-bottom: 20px; text-align: center; }
+  .modal-group { background: var(--surface2); border-radius: 12px; overflow: hidden; margin-bottom: 12px; }
+  .modal-row {
+    display: flex; align-items: center;
+    padding: 0 16px; min-height: 50px;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .modal-row:last-child { border-bottom: none; }
+  .modal-row-label { font-size: 17px; color: var(--text); width: 110px; flex-shrink: 0; }
+  .modal-row-input {
+    flex: 1; background: none; border: none;
+    color: var(--text); font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 17px; outline: none; text-align: right; padding: 13px 0;
+  }
+  .modal-row-input::placeholder { color: var(--muted); }
+  .modal-row-select {
+    flex: 1; background: none; border: none;
+    color: var(--accent); font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 17px; outline: none; -webkit-appearance: none;
+    text-align: right; padding: 13px 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23ff9f0a' d='M5 6L0 0h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0 center;
+    padding-right: 18px;
+  }
+  .modal-save-btn {
+    background: var(--accent); border: none; border-radius: 14px;
+    color: #000; font-size: 17px; font-weight: 700;
+    padding: 15px; width: 100%; cursor: pointer; margin-top: 4px;
+  }
+  .modal-save-btn:active { opacity: 0.8; }
+  .modal-cancel-link {
+    display: block; text-align: center; padding: 14px;
+    color: var(--muted); font-size: 17px; cursor: pointer; margin-top: 4px;
+  }
+
+  /* ── CAT INPUT MODAL ── */
+  .cat-modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 400; opacity: 0; pointer-events: none;
+    transition: opacity 0.2s;
+    display: flex; align-items: flex-end;
+  }
+  .cat-modal-overlay.show { opacity: 1; pointer-events: all; }
+  .cat-modal {
+    background: var(--surface);
+    border-radius: 20px 20px 0 0;
+    padding: 24px 20px calc(env(safe-area-inset-bottom) + 24px);
+    width: 100%;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.32,0.72,0,1);
+  }
+  .cat-modal-overlay.show .cat-modal { transform: translateY(0); }
+  .cat-modal-title { font-size: 20px; font-weight: 700; margin-bottom: 16px; text-align: center; }
+  .cat-modal-input {
+    background: var(--surface2); border: none; border-radius: 12px;
+    color: var(--text); font-size: 17px;
+    padding: 15px 16px; width: 100%; outline: none; margin-bottom: 12px;
+  }
+  .cat-modal-input::placeholder { color: var(--muted); }
+  .cat-modal-save {
+    background: var(--accent); border: none; border-radius: 14px;
+    color: #000; font-size: 17px; font-weight: 700;
+    padding: 15px; width: 100%; cursor: pointer; margin-bottom: 8px;
+  }
+  .cat-modal-cancel {
+    display: block; text-align: center; padding: 14px;
+    color: var(--muted); font-size: 17px; cursor: pointer;
+    background: none; border: none; width: 100%;
+  }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 100px; left: 50%;
+    transform: translateX(-50%) translateY(16px);
+    background: var(--surface2); color: var(--text);
+    font-size: 15px; font-weight: 500;
+    padding: 10px 20px; border-radius: 20px;
+    opacity: 0; transition: all 0.3s; pointer-events: none;
+    white-space: nowrap; z-index: 999;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--muted); font-size: 17px; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="large-title">Expenses</div>
+</div>
+
+<!-- MONTH NAV -->
+<div class="month-nav-bar">
+  <button class="month-nav-btn" onclick="changeMonth(-1)">‹</button>
+  <div class="month-title" id="monthLabel"></div>
+  <button class="month-nav-btn" onclick="changeMonth(1)">›</button>
+</div>
+
+<!-- SUMMARY -->
+<div class="summary-row">
+  <div class="s-card"><div class="s-label">Month</div><div class="s-val" id="sumTotal">0</div></div>
+  <div class="s-card"><div class="s-label">Today</div><div class="s-val" id="sumToday">0</div></div>
+  <div class="s-card"><div class="s-label">Entries</div><div class="s-val" id="sumCount">0</div></div>
+</div>
+
+<!-- PAGES -->
+<div class="page active" id="page-chart">
+  <div class="chart-page">
+    <canvas id="pie"></canvas>
+    <div class="legend-list" id="legend"></div>
+  </div>
+</div>
+
+<div class="page" id="page-add">
+  <div class="add-page">
+    <div class="add-section-title">New Expense</div>
+    <div class="add-group">
+      <div class="add-group-row">
+        <div class="add-group-label">Amount</div>
+        <input class="add-group-input" type="number" id="amountInput" placeholder="0.00" inputmode="decimal">
+      </div>
+      <div class="add-group-row">
+        <div class="add-group-label">Category</div>
+        <select class="add-group-select" id="categoryInput" onchange="handleCatChange()">
+          <option value="Food">Food</option>
+          <option value="Cigg">Cigg</option>
+          <option value="Petrol">Petrol</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+    </div>
+    <button class="add-main-btn" onclick="addExpense()">Add Expense</button>
+  </div>
+</div>
+
+<div class="page" id="page-entries">
+  <div class="filter-scroll" id="filterBar">
+    <div class="filter-chip active" onclick="setFilter('All',this)">All</div>
+    <div class="filter-chip" onclick="setFilter('Food',this)">Food</div>
+    <div class="filter-chip" onclick="setFilter('Cigg',this)">Cigg</div>
+    <div class="filter-chip" onclick="setFilter('Petrol',this)">Petrol</div>
+  </div>
+  <div style="padding:0 20px;" id="entriesContainer"></div>
+</div>
+
+<div class="page" id="page-history">
+  <div class="history-page" id="historyContainer"></div>
+</div>
+
+<!-- TAB BAR -->
+<div class="tab-bar">
+  <button class="tab-btn active" id="nav-chart" onclick="showPage('chart')">
+    <span style="font-size:22px">◕</span>
+    <span>Chart</span>
+  </button>
+  <button class="tab-btn" id="nav-add" onclick="showPage('add')">
+    <span style="font-size:22px">＋</span>
+    <span>Add</span>
+  </button>
+  <button class="tab-btn" id="nav-entries" onclick="showPage('entries')">
+    <span style="font-size:22px">≡</span>
+    <span>Entries</span>
+  </button>
+  <button class="tab-btn" id="nav-history" onclick="showPage('history')">
+    <span style="font-size:22px">◷</span>
+    <span>History</span>
+  </button>
+</div>
+
+<!-- ACTION SHEET -->
+<div class="overlay" id="sheetOverlay" onclick="closeSheet()">
+  <div class="action-sheet" onclick="event.stopPropagation()">
+    <div class="sheet-group">
+      <div class="sheet-title-row">
+        <div class="sheet-title-text" id="sheetTitleText"></div>
+      </div>
+      <button class="sheet-btn edit-btn" onclick="openEditFromSheet()">Edit</button>
+      <button class="sheet-btn delete-btn" onclick="showDeleteConfirm()">Delete</button>
+      <div class="confirm-row" id="confirmRow">
+        <button class="confirm-no" onclick="hideDeleteConfirm()">Cancel</button>
+        <button class="confirm-yes" onclick="confirmDelete()">Delete</button>
+      </div>
+    </div>
+    <button class="sheet-cancel-btn" onclick="closeSheet()">Cancel</button>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="editOverlay">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Edit Expense</div>
+    <div class="modal-group">
+      <div class="modal-row">
+        <div class="modal-row-label">Amount</div>
+        <input class="modal-row-input" type="number" id="editAmt" placeholder="0.00" inputmode="decimal">
+      </div>
+      <div class="modal-row">
+        <div class="modal-row-label">Category</div>
+        <select class="modal-row-select" id="editCat" onchange="handleEditCatChange()">
+          <option value="Food">Food</option>
+          <option value="Cigg">Cigg</option>
+          <option value="Petrol">Petrol</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+    </div>
+    <button class="modal-save-btn" onclick="saveEdit()">Save Changes</button>
+    <button class="modal-cancel-link" onclick="closeEditModal()">Cancel</button>
+  </div>
+</div>
+
+<!-- CUSTOM CATEGORY MODAL -->
+<div class="cat-modal-overlay" id="catOverlay">
+  <div class="cat-modal" onclick="event.stopPropagation()">
+    <div class="cat-modal-title">Custom Category</div>
+    <input class="cat-modal-input" type="text" id="catInput" placeholder="e.g. Medicine, Rent...">
+    <button class="cat-modal-save" onclick="saveCat()">Save</button>
+    <button class="cat-modal-cancel" onclick="closeCatModal()">Cancel</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── COLORS ──
+const PALETTE=['#ff9f0a','#ff453a','#0a84ff','#30d158','#bf5af2','#ff6961','#5ac8fa','#ff375f','#34c759','#af52de'];
+const CAT_COLORS={};let ci=0;
+function color(cat){if(!CAT_COLORS[cat]){CAT_COLORS[cat]=PALETTE[ci%PALETTE.length];ci++;}return CAT_COLORS[cat];}
+['Food','Cigg','Petrol','Police','Mousemover'].forEach(c=>color(c));
+
+// ── DATA ──
+let data=JSON.parse(localStorage.getItem('exp_v4')||'[]');
+if(!data.length){
+  data=[
+    {id:1,amount:80,category:'Food',date:'2026-05-08T07:00'},
+    {id:2,amount:13,category:'Cigg',date:'2026-05-08T16:42'},
+    {id:3,amount:300,category:'Police',date:'2026-05-08T18:09'},
+    {id:4,amount:2000,category:'Mousemover',date:'2026-05-08T19:30'},
+    {id:5,amount:160,category:'Food',date:'2026-05-09T03:11'},
+    {id:6,amount:24,category:'Cigg',date:'2026-05-09T19:40'},
+    {id:7,amount:12,category:'Cigg',date:'2026-05-09T19:49'},
+    {id:8,amount:230,category:'Food',date:'2026-05-09T21:37'},
+    {id:9,amount:24,category:'Cigg',date:'2026-05-09T22:57'},
+    {id:10,amount:247,category:'Cigg',date:'2026-05-10T07:39'},
+    {id:11,amount:75,category:'Cigg',date:'2026-05-10T23:26'},
+    {id:12,amount:200,category:'Food',date:'2026-05-11T03:33'},
+    {id:13,amount:200,category:'Petrol',date:'2026-05-11T03:33'},
+  ];
+  persist();
+}
+function persist(){localStorage.setItem('exp_v4',JSON.stringify(data));}
+
+// ── STATE ──
+const now=new Date();
+let vy=now.getFullYear(),vm=now.getMonth();
+let filter='All',customCat='',activeId=null,editId=null,catTarget='add';
+
+// ── HELPERS ──
+function mk(y,m){return `${y}-${String(m+1).padStart(2,'0')}`;}
+function monthData(y,m){return data.filter(e=>e.date.startsWith(mk(y,m)));}
+function monthName(y,m){return new Date(y,m,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});}
+
+function updateMonthLabel(){document.getElementById('monthLabel').textContent=monthName(vy,vm);}
+
+function changeMonth(d){
+  vm+=d;
+  if(vm>11){vm=0;vy++;}
+  if(vm<0){vm=11;vy--;}
+  updateMonthLabel();updateSummary();
+  const ap=document.querySelector('.page.active');
+  if(ap.id==='page-chart')drawChart();
+  if(ap.id==='page-entries')renderEntries();
+}
+
+function updateSummary(){
+  const me=monthData(vy,vm);
+  const total=me.reduce((s,e)=>s+e.amount,0);
+  const td=new Date().toISOString().slice(0,10);
+  const tday=data.filter(e=>e.date.startsWith(td)).reduce((s,e)=>s+e.amount,0);
+  document.getElementById('sumTotal').textContent=total.toLocaleString();
+  document.getElementById('sumToday').textContent=tday.toLocaleString();
+  document.getElementById('sumCount').textContent=me.length;
+}
+
+function showPage(name){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.getElementById('nav-'+name).classList.add('active');
+  if(name==='chart')drawChart();
+  if(name==='entries')renderEntries();
+  if(name==='history')renderHistory();
+  updateSummary();
+}
+
+// ── CHART ──
+function drawChart(){
+  const canvas=document.getElementById('pie');
+  const sz=Math.min(window.innerWidth-40,280);
+  canvas.width=sz;canvas.height=sz;
+  const ctx=canvas.getContext('2d');
+  const me=monthData(vy,vm);
+  const leg=document.getElementById('legend');
+  leg.innerHTML='';
+  if(!me.length){
+    ctx.clearRect(0,0,sz,sz);
+    leg.innerHTML='<div class="no-data">No expenses this month</div>';
+    return;
+  }
+  const g={};me.forEach(e=>{g[e.category]=(g[e.category]||0)+e.amount;});
+  const total=Object.values(g).reduce((s,v)=>s+v,0);
+  const sorted=Object.entries(g).sort((a,b)=>b[1]-a[1]);
+  const cx=sz/2,cy=sz/2,r=sz/2-10;
+  let sa=-Math.PI/2;
+  sorted.forEach(([cat,amt])=>{
+    const sl=(amt/total)*2*Math.PI;
+    ctx.beginPath();ctx.moveTo(cx,cy);ctx.arc(cx,cy,r,sa,sa+sl);ctx.closePath();
+    ctx.fillStyle=color(cat);ctx.fill();
+    ctx.strokeStyle='#000';ctx.lineWidth=2.5;ctx.stroke();
+    if(amt/total>0.05){
+      const mid=sa+sl/2;
+      ctx.fillStyle='#fff';
+      ctx.font=`600 ${sz*0.042}px -apple-system,sans-serif`;
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(Math.round(amt/total*100)+'%',cx+r*0.66*Math.cos(mid),cy+r*0.66*Math.sin(mid));
+    }
+    sa+=sl;
+  });
+  // donut hole
+  ctx.beginPath();ctx.arc(cx,cy,r*0.4,0,2*Math.PI);
+  ctx.fillStyle='#000';ctx.fill();
+  ctx.fillStyle='#ff9f0a';
+  ctx.font=`700 ${sz*0.072}px -apple-system,sans-serif`;
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(total.toLocaleString(),cx,cy-8);
+  ctx.fillStyle='rgba(235,235,245,0.3)';
+  ctx.font=`400 ${sz*0.038}px -apple-system,sans-serif`;
+  ctx.fillText('total',cx,cy+12);
+  leg.innerHTML='';
+  sorted.forEach(([cat,amt])=>{
+    const pct=((amt/total)*100).toFixed(1);
+    const row=document.createElement('div');row.className='legend-row';
+    row.innerHTML=`<div class="legend-dot" style="background:${color(cat)}"></div><div class="legend-cat">${cat}</div><div class="legend-right"><div class="legend-amt">${amt.toLocaleString()}</div><div class="legend-pct">${pct}%</div></div>`;
+    leg.appendChild(row);
+  });
+}
+
+// ── ADD ──
+function handleCatChange(){
+  if(document.getElementById('categoryInput').value==='Other'){catTarget='add';openCatModal();}
+}
+function addExpense(){
+  const amt=parseFloat(document.getElementById('amountInput').value);
+  if(!amt||amt<=0){showToast('Enter a valid amount');return;}
+  const sel=document.getElementById('categoryInput').value;
+  const cat=sel==='Other'?(customCat||'Other'):sel;
+  const n=new Date();
+  const ds=`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-${String(n.getDate()).padStart(2,'0')}T${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
+  data.unshift({id:Date.now(),amount:amt,category:cat,date:ds});
+  persist();
+  vy=n.getFullYear();vm=n.getMonth();updateMonthLabel();
+  document.getElementById('amountInput').value='';
+  document.getElementById('categoryInput').value='Food';
+  customCat='';color(cat);addChip(cat);updateSummary();
+  showToast('Expense added');
+}
+function addChip(cat){
+  const bar=document.getElementById('filterBar');
+  if([...bar.querySelectorAll('.filter-chip')].some(c=>c.textContent===cat))return;
+  const c=document.createElement('div');c.className='filter-chip';c.textContent=cat;
+  c.onclick=function(){setFilter(cat,this);};bar.appendChild(c);
+}
+
+// ── ENTRIES ──
+function setFilter(f,el){
+  filter=f;
+  document.querySelectorAll('.filter-chip').forEach(c=>c.classList.remove('active'));
+  el.classList.add('active');renderEntries();
+}
+function renderEntries(){
+  const container=document.getElementById('entriesContainer');
+  const me=monthData(vy,vm);
+  const filtered=filter==='All'?me:me.filter(e=>e.category===filter);
+  if(!filtered.length){container.innerHTML='<div class="empty-state">No entries this month</div>';return;}
+  container.innerHTML='';
+  const list=document.createElement('div');
+  list.style.cssText='background:var(--surface);border-radius:16px;overflow:hidden;';
+  filtered.forEach(e=>{
+    const d=new Date(e.date);
+    const item=document.createElement('div');
+    item.className='entry-item';
+    item.onclick=()=>openSheet(e.id);
+    item.innerHTML=`
+      <div class="entry-cat-dot" style="background:${color(e.category)}"></div>
+      <div class="entry-info">
+        <div class="entry-cat-name">${e.category}</div>
+        <div class="entry-datetime">${d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'})} · ${d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</div>
+      </div>
+      <div class="entry-amount">${e.amount.toLocaleString()}</div>
+      <div class="entry-chevron">›</div>`;
+    list.appendChild(item);
+  });
+  container.appendChild(list);
+}
+
+// ── ACTION SHEET ──
+function openSheet(id){
+  activeId=id;
+  const e=data.find(x=>x.id===id);
+  if(!e)return;
+  document.getElementById('sheetTitleText').textContent=`${e.category}  ·  ${e.amount.toLocaleString()}`;
+  document.getElementById('sheetOverlay').classList.add('show');
+}
+function closeSheet(){document.getElementById('sheetOverlay').classList.remove('show');hideDeleteConfirm();activeId=null;}
+function openEditFromSheet(){
+  const id=activeId;closeSheet();
+  setTimeout(()=>openEditModal(id),100);
+}
+function deleteFromSheet(){
+  const id=activeId;
+  closeSheet();
+  data=data.filter(e=>e.id!==id);
+  persist();renderEntries();updateSummary();drawChart();showToast('Deleted');
+}
+function showDeleteConfirm(){document.getElementById('confirmRow').classList.add('show');}
+function hideDeleteConfirm(){document.getElementById('confirmRow').classList.remove('show');}
+function confirmDelete(){
+  const id=activeId;
+  hideDeleteConfirm();closeSheet();
+  data=data.filter(e=>e.id!==id);
+  persist();renderEntries();updateSummary();drawChart();showToast('Deleted');
+}
+
+// ── EDIT MODAL ──
+function openEditModal(id){
+  editId=id;
+  const e=data.find(x=>x.id===id);if(!e)return;
+  document.getElementById('editAmt').value=e.amount;
+  const sel=document.getElementById('editCat');
+  // Add custom option if needed
+  const known=['Food','Cigg','Petrol','Other'];
+  while(sel.options.length>4)sel.remove(4);
+  if(!known.includes(e.category)){
+    const opt=document.createElement('option');
+    opt.value=e.category;opt.textContent=e.category;sel.appendChild(opt);
+  }
+  sel.value=e.category;
+  document.getElementById('editOverlay').classList.add('show');
+  setTimeout(()=>document.getElementById('editAmt').focus(),300);
+}
+function closeEditModal(){document.getElementById('editOverlay').classList.remove('show');editId=null;}
+function handleEditCatChange(){
+  if(document.getElementById('editCat').value==='Other'){catTarget='edit';openCatModal();}
+}
+function saveEdit(){
+  const amt=parseFloat(document.getElementById('editAmt').value);
+  if(!amt||amt<=0){showToast('Enter a valid amount');return;}
+  let cat=document.getElementById('editCat').value;
+  if(cat==='Other') cat=customCat||'Other';
+  const idx=data.findIndex(e=>e.id===editId);
+  if(idx>-1){data[idx].amount=amt;data[idx].category=cat;color(cat);}
+  persist();closeEditModal();renderEntries();updateSummary();drawChart();
+  showToast('Entry updated');
+}
+
+// ── CUSTOM CAT MODAL ──
+function openCatModal(){
+  document.getElementById('catInput').value='';
+  document.getElementById('catOverlay').classList.add('show');
+  setTimeout(()=>document.getElementById('catInput').focus(),300);
+}
+function closeCatModal(){
+  document.getElementById('catOverlay').classList.remove('show');
+  if(catTarget==='add') document.getElementById('categoryInput').value='Food';
+  if(catTarget==='edit') document.getElementById('editCat').value='Food';
+  customCat='';
+}
+function saveCat(){
+  const v=document.getElementById('catInput').value.trim();
+  if(!v){document.getElementById('catInput').focus();return;}
+  customCat=v;
+  document.getElementById('catOverlay').classList.remove('show');
+  showToast('Category: '+v);
+}
+
+// ── HISTORY ──
+function renderHistory(){
+  const container=document.getElementById('historyContainer');
+  container.innerHTML='';
+  const map={};
+  data.forEach(e=>{const k=e.date.slice(0,7);if(!map[k])map[k]=[];map[k].push(e);});
+  const keys=Object.keys(map).sort().reverse();
+  if(!keys.length){container.innerHTML='<div class="empty-state">No history yet</div>';return;}
+  keys.forEach(key=>{
+    const [y,m]=key.split('-').map(Number);
+    const entries=map[key];
+    const total=entries.reduce((s,e)=>s+e.amount,0);
+    const mName=new Date(y,m-1,1).toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+    const cats={};entries.forEach(e=>{cats[e.category]=(cats[e.category]||0)+e.amount;});
+    const sc=Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+    const grp=document.createElement('div');grp.className='history-group';
+    const hdr=document.createElement('div');hdr.className='history-month-header';
+    hdr.innerHTML=`<span class="history-month-name">${mName}</span><span class="history-month-total">Total: ${total.toLocaleString()}</span>`;
+    const list=document.createElement('div');list.className='history-list';
+    sc.forEach(([cat,amt])=>{
+      const row=document.createElement('div');row.className='history-cat-row';
+      row.innerHTML=`<div class="history-cat-dot" style="background:${color(cat)}"></div><div class="history-cat-name">${cat}</div><div class="history-cat-amt">${amt.toLocaleString()}</div>`;
+      list.appendChild(row);
+    });
+    grp.appendChild(hdr);grp.appendChild(list);
+    container.appendChild(grp);
+  });
+}
+
+// ── TOAST ──
+function showToast(msg){
+  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2000);
+}
+
+// ── INIT ──
+updateMonthLabel();updateSummary();drawChart();
+</script>
+</body>
+</html>
